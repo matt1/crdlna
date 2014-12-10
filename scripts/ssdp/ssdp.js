@@ -1,3 +1,8 @@
+/**
+ * Provides a basic SSDP handler that will setup UDP multicast listeners and look for services 
+ * advertising via the SSDP protocol.  Once found those services will be available for use elsewhere
+ * (e.g. by UPnP/DLNA-specific code)
+ */
 var SSDP = function(config) {
   var c = config || {};
 
@@ -95,6 +100,9 @@ SSDP.prototype.updateCache = function() {
   });
 };
 
+/**
+ * Log a message with an appropriate prefix
+ */
 SSDP.prototype.log = function(message) {
   console.log("SSDP: " + message);
 };
@@ -132,7 +140,7 @@ SSDP.prototype.processNotify = function(str) {
   str.replace(/([A-Z\-]*){1}:([a-zA-Z\-_0-9\.:=\/ ]*){1}/gi, 
     function (match, m1, m2) {
       var name = m1.toLowerCase().trim();
-      name = name.replace('-',''); // remove any hypens
+      name = name.replace('-',''); // remove any hypens, e.g. cache-control
       notify[name] = m2.trim();
     });
 
@@ -142,6 +150,7 @@ SSDP.prototype.processNotify = function(str) {
     notify.expires = Date.now() + (Number(expires) * 1000);
   }
 
+  // Check for graceful byebye messages
   if (notify.nts == 'ssdp:byebye') {
     this.removeServiceFromCache(notify);
   } else {  // ssdp:alive
@@ -181,7 +190,8 @@ SSDP.prototype.init = function() {
           } else {
             that.socketId = socketId;
             that.sendDiscover();
-            that.pollData();               
+            that.pollData();  
+            that.log("Waiting for SSDP broadcasts.");             
           }
         });
       }
@@ -202,9 +212,7 @@ SSDP.prototype.sendDiscover = function() {
 
   var buffer = this.stringToBuffer(search);
   chrome.socket.sendTo(this.socketId, buffer, that.multicast, 
-    that.port, function(info) {
-      that.log('Sent search...');
-   });
+    that.port, function(info) { });
 };
 
 /**

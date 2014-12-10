@@ -12,7 +12,8 @@
     "storage",
     {
       "socket": ["udp-send-to", "udp-bind", "udp-multicast-membership"]
-    }
+    },
+    "http://*/" // Pretty wild but the UPnP discovery URL could be more or less anything
   ],
   "icons": {"128": "images/logo-128.png" }
 }
