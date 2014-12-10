@@ -1,0 +1,18 @@
+{
+  "name": "Chrome DLNA Renderer",
+  "description": "Chrome DLNA Renderer",
+  "version": "0.1",
+  "manifest_version": 2,
+  "app": {
+    "background": {
+      "scripts": ["scripts/background/background.js"]
+    }
+  },
+  "permissions": [
+    "storage",
+    {
+      "socket": ["udp-send-to", "udp-bind", "udp-multicast-membership"]
+    }
+  ],
+  "icons": {"128": "images/logo-128.png" }
+}
