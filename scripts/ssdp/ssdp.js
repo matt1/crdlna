@@ -1,7 +1,19 @@
 /**
- * Provides a basic SSDP handler that will setup UDP multicast listeners and look for services 
- * advertising via the SSDP protocol.  Once found those services will be available for use elsewhere
- * (e.g. by UPnP/DLNA-specific code)
+ * Provides a basic SSDP handler that will set up UDP multicast listeners and look for services 
+ * advertising via the SSDP protocol.  
+ *
+ * For each SSDP service found, a javascript object will be made available that contains the 
+ * salient information about that service (n.b. we add some stuff to make house keeping easier,
+ * such as expiration dates for cache control) that can be used elsewhere, e.g.:
+ *
+ * var service = {
+ *   cachecontrol: "max-age=60"
+ *   location: "http://192.168.0.1:1234/MadeUpUrl.xml"
+ *   nt: "urn:schemas-upnp-org:device:MediaServer:1"
+ *   nts: "ssdp:alive"
+ *   usn: "uuid:1a2b3c4d-1234-abcd-1234-abcdef"
+ * }
+ *
  */
 var SSDP = function(config) {
   var c = config || {};
@@ -29,20 +41,6 @@ SSDP.prototype.getServices = function(filter) {
     }
   });
   return matchedServices;
-};
-
-/**
- * Gets MediaServer services
- */
-SSDP.prototype.getMediaServers = function() {
-  return this.getServices('MediaServer');
-};
-
-/**
- * Gets ContentDirectory services
- */
-SSDP.prototype.getContentDirectories = function() {
-  return this.getServices('ContentDirectory');
 };
 
 /**

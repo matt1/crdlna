@@ -20,6 +20,18 @@ UPNP.prototype.init = function() {
 /**
  * Process the services we know about by loading their XML details from their location URL, parsing
  * the XML and then storing it for later use.
+ *
+ * The format of the parameter is basically a javascript object of the SSDP NOTIFY response, e.g.
+ * the following is an example of the sort of thing we're expecting - the critical part is the 
+ * location value as that contains the devices service description XML
+ *
+ * var service = {
+ *   cachecontrol: "max-age=60"
+ *   location: "http://192.168.0.1:1234/MadeUpUrl.xml"
+ *   nt: "urn:schemas-upnp-org:device:MediaServer:1"
+ *   nts: "ssdp:alive"
+ *   usn: "uuid:1a2b3c4d-1234-abcd-1234-abcdef"
+ * }
  */
 UPNP.prototype.processServices = function(services) {
 	var that = this;
