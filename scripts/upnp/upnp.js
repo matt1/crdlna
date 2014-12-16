@@ -1,9 +1,16 @@
 /**
- *	Queries services (found via SSDP) using XHR for the details of the servces they provide
+ * Queries services (found via SSDP) using XHR for the details of the servces they provide.
+ *
+ * @constructor
+ * @param {Object} details Contains construction details, specifically should contain a
+ * deviceCallack function to be called when new devices are added to the device cache
  */
-var UPNP = function () {
-
+var UPNP = function (details) {
 	this.devices = [];
+	this.deviceUrls = [];
+
+	this.deviceCallback = details.deviceCallback;
+	
 
 };
 
@@ -13,12 +20,11 @@ var UPNP = function () {
 UPNP.prototype.init = function() {
 	var that = this;
 
-	this.log("Initialising...");
-
+	this.log("Initialising...");	// actually nothing to do for now
 };
 
 /**
- * Process the services we know about by loading their XML details from their location URL, parsing
+ * Process the services we know about by GETing their XML details from their location URL, parsing
  * the XML and then storing it for later use.
  *
  * The format of the parameter is basically a javascript object of the SSDP NOTIFY response, e.g.
@@ -32,6 +38,8 @@ UPNP.prototype.init = function() {
  *   nts: "ssdp:alive"
  *   usn: "uuid:1a2b3c4d-1234-abcd-1234-abcdef"
  * }
+ * @private
+ * @param {Object} services An array containing details of all services that we're going to process
  */
 UPNP.prototype.processServices = function(services) {
 	var that = this;
@@ -40,21 +48,31 @@ UPNP.prototype.processServices = function(services) {
 
 	if (!services) return;
 
-	services.forEach(function (v, i, a) {
+	services.forEach(function (service, i, a) {
+		// check if we already know about this device or not
+		if (!service.location || that.deviceUrls.indexOf(service.location) > -1) {
+			// skip for now - we either tried to download alrady, or its malformed
+		} else {
+
 		
-		if (v.location) {
 			var xhr = new XMLHttpRequest();
-			xhr.open('GET', v.location, true);
+			xhr.open('GET', service.location, true);
 			xhr.onreadystatechange = function() {
 					if (xhr.readyState == 4 && xhr.status == 200) {
 						xml = xhr.responseText;
 						var deviceDoc = parser.parseFromString(xml, 'application/xml');
-						that.processDevice(deviceDoc);
+						that.processDevice(deviceDoc, service.location);
 					}
 			};
-			xhr.send();
-		} else {
-			that.log('Service ' + v.usn +  ' had no location header!');
+
+			try {
+				// Keep track of visited URLs so we dont visit too many times
+				that.deviceUrls.push(service.location);
+				xhr.send();
+			} catch (err) {
+				that.log(err);
+			}
+
 		}
 	});
 };
@@ -62,8 +80,12 @@ UPNP.prototype.processServices = function(services) {
 /**
  * Processes a UPnP's devices XML device document (retrieved from SSDP's data for the service) and
  * generates javascript object representing the XML data.  Finally adds it to the device collection
+ *
+ * @param {string} deviceDoc The XML string returned from the device's location URL
+ * @param {string} location The device's location URL
+ * @private
  */
-UPNP.prototype.processDevice = function (deviceDoc) {
+UPNP.prototype.processDevice = function (deviceDoc, location) {
 	if (!deviceDoc || deviceDoc.children.length < 1) return;
 
 	var xmlDeviceType = deviceDoc.querySelector('deviceType').textContent;
@@ -97,16 +119,17 @@ UPNP.prototype.processDevice = function (deviceDoc) {
 		services.push({
 			serviceType: st,
 			serviceId: sid,
-			contorlUrl: controlUrl,
+			controlUrl: controlUrl,
 			eventSubUrl: eventUrl,
 			SCPDUrl: scpdUrl
 		});
 	});
 
 	var device = {
+		location: location,
 		type: xmlDeviceType,
 		name: xmlName,
-		UDN: xmlUDN,
+		usn: xmlUDN,		// Is this really the same USN we're seeing in SSDP?
 		services: services,
 		icons: icons,
 		presentationURL: xmlPresentationUrl
@@ -116,27 +139,67 @@ UPNP.prototype.processDevice = function (deviceDoc) {
 };
 
 /**
- * Adds a device to the collection.  If there is an existing device with the same UDN value/na,e
- * already in the collection, it will be deleted.
+ * Checks to see if this is a knoww URL so we dont try to process it over and over.
+ *
+ * @param {string} url The location URL of the device we're checking
+ * @returns {Boolean} True if the device is one we already have in our device cache
+ * @private
  */
-UPNP.prototype.addDevice = function(device) {
-	this.removeDevice(device);
-	this.devices.push(device);
+UPNP.prototype.knownDevice = function(url) {
+	var found = false;
+	this.devices.forEach(function (v, i, a) {
+		if (v.location == url) {
+			found = true;
+		}
+	});
+	return found;
 };
 
 /**
- *	Removes a device from its collection based on its UDN
+ * Adds a device to the collection.  If there is an existing device with the same location/URL
+ * already in the collection, it will be deleted first.
+ *
+ * @param {Object} decice The device to add
+ */
+UPNP.prototype.addDevice = function(device) {
+	var known = this.knownDevice(device);
+	
+	if (known) {
+		this.removeDevice(device);
+	}
+
+	this.devices.push(device);
+
+	if (!known) {
+		// Let other interested parties know that we have a new device
+		if (this.deviceCallback) {
+			this.deviceCallback();
+		}
+	}
+};
+
+/**
+ * Removes a device from its collection based on its location/URL
+ *
+ * @param {Object} decice The device to remove 
  */
 UPNP.prototype.removeDevice = function(device) {
-	var that = this;
-
 	this.devices = this.devices.filter(function (v, i, a) {
-		if (v.UDN == device.UDN) {
+		if (v.location == device.location) {
 			return false;
 		} else {
 			return true;
 		}
 	});
+};
+
+/**
+ * Gets the known devices
+ *
+ * @returns {Array} Array of known devices
+ */
+UPNP.prototype.getDevices = function() {
+	return this.devices;
 };
 
 /**
@@ -148,6 +211,9 @@ UPNP.prototype.setServices = function (services) {
 
 /**
  * Log a message with an appropriate prefix
+ *
+ * @private
+ * @param {string} message The message to log 
  */
 UPNP.prototype.log = function (message) {
   console.log("UPNP: " + message);

@@ -14,6 +14,11 @@
  *   usn: "uuid:1a2b3c4d-1234-abcd-1234-abcdef"
  * }
  *
+ * @constructor
+ * @param {Object} config Contains configuration details for the SSDP client.  Sepcifically
+ * config.address is the IPv4 address to bind this socket to, config.port is the multicast port to
+ * use, config.multicast is the multicast address to use, config.bufferLength is the length of the
+ * socket buffer
  */
 var SSDP = function(config) {
   var c = config || {};
@@ -30,9 +35,149 @@ var SSDP = function(config) {
 };
 
 /**
- * Gets a service by filtering on the service type name
+ *  Initialise the SSDP connection by opening a UDP socket and joining the multicast group.
+ */
+SSDP.prototype.init = function() {
+  this.log("Initialising...");
+  
+  var that = this;
+  chrome.socket.create('udp', function (socket) {
+    var socketId = socket.socketId;
+
+    // House keeping on TTL & loopback
+    chrome.socket.setMulticastTimeToLive(socketId, 12, function (result) {
+      if (result !== 0) {
+        that.log('Error setting multicast TTL' + result);
+      }});
+
+    chrome.socket.setMulticastLoopbackMode(socketId, true, function (result) {
+      if (result !== 0) {
+        that.log('Error setting multicast loop-back mode: ' + result);
+      }
+    });
+
+    chrome.socket.bind(socketId, that.address, that.port, function (result) {
+      if (result !== 0) {
+        that.log('Unable to bind to new socket: ' + result);
+      } else {
+        chrome.socket.joinGroup(socketId, that.multicast, function (result) {
+          if (result !== 0) {
+            that.log('Unable to join multicast group ' + that.multicast + ': ' + result);
+          } else {
+            that.socketId = socketId;            
+            that.pollData();  
+            that.sendDiscover();
+            that.log("Waiting for SSDP broadcasts.");             
+          }
+        });
+      }
+    });
+  });
+};
+
+/**
+ * Send a discover/M-SEARCH message
+ * @param {Object} config Contains configuration settings for the discover message, config.delay
+ * contains the delay in seconds that SSDP services should wait before sending a response
+ */
+SSDP.prototype.sendDiscover = function(config) {
+  var that = this;
+  var c = config || {};
+  var respondDelay = c.delay || 1;
+
+  var search = 'M-SEARCH * HTTP/1.1\r\n' +
+    'HOST: 239.255.255.250:1900\r\n' +
+    'MAN: ssdp:discover\r\n' +
+    'MX: ' + respondDelay + '\r\n' +
+    'ST: ssdp:all\r\n\r\n';
+
+  var buffer = this.stringToBuffer(search);
+  chrome.socket.sendTo(this.socketId, buffer, that.multicast, 
+    that.port, function(info) { });
+};
+
+
+/**
+ * Handles incomming UDP data from the multicast group
+ * @private 
+ */
+SSDP.prototype.pollData = function() {
+  var that = this;
+  if (that.socketId > -1) {
+    chrome.socket.recvFrom(that.socketId, that.bufferLength, function (result) {
+      if (result.resultCode >= 0) {
+        var data = that.bufferToString(result.data);
+        that.processNotify(data);
+        that.pollData();
+      } else {
+        that.log("Error handling data");
+      }
+    });
+  }
+};
+
+/**
+ * Processes the NOTIFY broadcast and stores the service details in the services array
+ * @param {string} str Contains the string of the NOTIFY resposne sent by SSDP services.
+ * @private 
+ */
+SSDP.prototype.processNotify = function(str) {
+  var notify = {};
+  if (str.indexOf('NOTIFY') < 0) {
+    // only interested in notify broadcasts
+    return;
+  }
+  str.replace(/([A-Z\-]*){1}:([a-zA-Z\-_0-9\.:=\/ ]*){1}/gi, 
+    function (match, m1, m2) {
+      var name = m1.toLowerCase().trim();
+      name = name.replace('-',''); // remove any hypens, e.g. cache-control
+      notify[name] = m2.trim();
+    });
+
+  // Check for expiration/max-age
+  if (notify.cachecontrol) {
+    var expires = notify.cachecontrol.split('=')[1];
+    notify.expires = Date.now() + (Number(expires) * 1000);
+  }
+
+  // Check for graceful byebye messages
+  if (notify.nts == 'ssdp:byebye') {
+    this.removeServiceFromCache(notify);
+  } else {  // ssdp:alive
+    this.addServiceToCache(notify);
+  }
+};
+
+/**
+ * Leave groups and close any open sockets
+ * @private
+ */
+SSDP.prototype.shutdown = function() {
+  this.log('Closing sockets');
+
+  chrome.sockets.udp.getSockets(function(sockets) {
+    sockets.forEach(function(socket) {
+      // Chrome auto leaves groups for us
+      chrome.sockets.udp.close(socket.socketId);
+    });
+  });
+};
+
+/**
+ * Gets all discovered services that we already know about.  Does not start a new discover and will
+ * only return services that we've already seen and which have not expired.
+ *
+ * @param {string} filter Contains a string filter used to include services which match the filter, 
+ * or all services if no filter is provided
  */
 SSDP.prototype.getServices = function(filter) {
+  if (!filter) {
+    return this.services;
+  } 
+
+  // Refresh the cache before we return anything to remove anything which may have expired.
+  this.updateCache();
+
   var matchedServices = this.services.filter(function (v, i, a) {
     if (v.nt && v.nt.indexOf(filter) > -1) {
       return true;
@@ -45,6 +190,7 @@ SSDP.prototype.getServices = function(filter) {
 
 /**
  * Adds a service to the cache
+ * @param {Object} service Service that should be added to the cachce
  */
 SSDP.prototype.addServiceToCache = function(service) {
 
@@ -60,6 +206,7 @@ SSDP.prototype.addServiceToCache = function(service) {
 
 /**
  * Remove service from cache if it already exists
+ * @param {Object} service Service that should be removed from the cachce 
  */
 SSDP.prototype.removeServiceFromCache = function(service) {
 
@@ -99,136 +246,9 @@ SSDP.prototype.updateCache = function() {
 };
 
 /**
- * Log a message with an appropriate prefix
- */
-SSDP.prototype.log = function(message) {
-  console.log("SSDP: " + message);
-};
-
-/**
- *  Handles incomming UDP data
- */
-SSDP.prototype.pollData = function() {
-  var that = this;
-  if (that.socketId > -1) {
-    chrome.socket.recvFrom(that.socketId, that.bufferLength, function (result) {
-      if (result.resultCode >= 0) {
-        var data = that.bufferToString(result.data);
-        // TODO: move cache check to a timer so that we refresh regardless of data arriving or not
-        that.updateCache();
-        that.processNotify(data);
-        that.pollData();
-      } else {
-        that.log("Error handling data");
-      }
-    });
-  }
-};
-
-/**
- * Processes the NOTIFY broadcast and stores the service details in the
- * services array
- */
-SSDP.prototype.processNotify = function(str) {
-  var notify = {};
-  if (str.indexOf('NOTIFY') < 0) {
-// only interested in notify broadcasts
-    return;
-  }
-  str.replace(/([A-Z\-]*){1}:([a-zA-Z\-_0-9\.:=\/ ]*){1}/gi, 
-    function (match, m1, m2) {
-      var name = m1.toLowerCase().trim();
-      name = name.replace('-',''); // remove any hypens, e.g. cache-control
-      notify[name] = m2.trim();
-    });
-
-  // Check for expiration/max-age
-  if (notify.cachecontrol) {
-    var expires = notify.cachecontrol.split('=')[1];
-    notify.expires = Date.now() + (Number(expires) * 1000);
-  }
-
-  // Check for graceful byebye messages
-  if (notify.nts == 'ssdp:byebye') {
-    this.removeServiceFromCache(notify);
-  } else {  // ssdp:alive
-    this.addServiceToCache(notify);
-  }
-};
-
-/**
- *  Initialise the SSDP connection
- */
-SSDP.prototype.init = function() {
-  this.log("Initialising...");
-  
-  var that = this;
-  chrome.socket.create('udp', function (socket) {
-    var socketId = socket.socketId;
-
-    // House keeping on TTL & loopback
-    chrome.socket.setMulticastTimeToLive(socketId, 12, function (result) {
-      if (result !== 0) {
-        that.log('Error setting multicast TTL' + result);
-      }});
-
-    chrome.socket.setMulticastLoopbackMode(socketId, true, function (result) {
-      if (result !== 0) {
-        that.log('Error setting multicast loop-back mode: ' + result);
-      }
-    });
-
-    chrome.socket.bind(socketId, that.address, that.port, function (result) {
-      if (result !== 0) {
-        that.log('Unable to bind to new socket: ' + result);
-      } else {
-        chrome.socket.joinGroup(socketId, that.multicast, function (result) {
-          if (result !== 0) {
-            that.log('Unable to join multicast group ' + that.multicast + ': ' + result);
-          } else {
-            that.socketId = socketId;
-            that.sendDiscover();
-            that.pollData();  
-            that.log("Waiting for SSDP broadcasts.");             
-          }
-        });
-      }
-    });
-  });
-};
-
-/**
- * Send a discover message
- */
-SSDP.prototype.sendDiscover = function() {
-  var that = this;
-  var search = 'M-SEARCH * HTTP/1.1\r\n' +
-    'HOST: 239.255.255.250:1900\r\n' +
-    'MAN: ssdp:discover\r\n' +
-    'MX: 10\r\n' +
-    'ST: ssdp:all\r\n\r\n';
-
-  var buffer = this.stringToBuffer(search);
-  chrome.socket.sendTo(this.socketId, buffer, that.multicast, 
-    that.port, function(info) { });
-};
-
-/**
- *  Leave groups and close any open sockets
- */
-SSDP.prototype.shutdown = function() {
-  this.log('Closing sockets');
-
-  chrome.sockets.udp.getSockets(function(sockets) {
-    sockets.forEach(function(socket) {
-      // Chrome auto leaves groups for us
-      chrome.sockets.udp.close(socket.socketId);
-    });
-  });
-};
-
-/**
  * Converts a string to an array buffer
+ * @param {string} str String to e converted
+ * @private 
  */
 SSDP.prototype.stringToBuffer = function(str) {
   // courtesy of Renato Mangini / HTML5Rocks
@@ -243,9 +263,21 @@ SSDP.prototype.stringToBuffer = function(str) {
 
 /**
  * Converts a buffer back to a string
+ * @param {ArrayBuffer} buffer ArrayBuffer to be converted back to a string
+ * @private
  */
 SSDP.prototype.bufferToString = function(buffer) {
   // courtesy of Renato Mangini / HTML5Rocks
   // http://updates.html5rocks.com/2012/06/How-to-convert-ArrayBuffer-to-and-from-String
   return String.fromCharCode.apply(null, new Uint8Array(buffer));
 };
+
+/**
+ * Log a message with an appropriate prefix
+ * @private
+ * @param {string} message The message to log 
+ */
+SSDP.prototype.log = function(message) {
+  console.log("SSDP: " + message);
+};
+
