@@ -28,7 +28,7 @@ var SSDP = function(config) {
   this.multicast = c.multicast || '239.255.255.250';
 
   this.socketId = -1;
-  this.bufferLength = c.bufferLength || 4096;
+  this.bufferLength = c.bufferLength || 8192;
 
   this.services = [];
 
@@ -83,7 +83,7 @@ SSDP.prototype.init = function() {
 SSDP.prototype.sendDiscover = function(config) {
   var that = this;
   var c = config || {};
-  var respondDelay = c.delay || 1;
+  var respondDelay = c.delay || 3;
 
   var search = 'M-SEARCH * HTTP/1.1\r\n' +
     'HOST: 239.255.255.250:1900\r\n' +
@@ -93,7 +93,9 @@ SSDP.prototype.sendDiscover = function(config) {
 
   var buffer = this.stringToBuffer(search);
   chrome.socket.sendTo(this.socketId, buffer, that.multicast, 
-    that.port, function(info) { });
+    that.port, function(info) {
+      that.log("Sent M-SEARCH discovery message...");
+    });
 };
 
 
@@ -127,7 +129,7 @@ SSDP.prototype.processNotify = function(str) {
     // only interested in notify broadcasts
     return;
   }
-  str.replace(/([A-Z\-]*){1}:([a-zA-Z\-_0-9\.:=\/ ]*){1}/gi, 
+  str.replace(/([A-Z\-]*){1}:([a-zA-Z\-_0-9\.:=\/ ?]*){1}/gi, 
     function (match, m1, m2) {
       var name = m1.toLowerCase().trim();
       name = name.replace('-',''); // remove any hypens, e.g. cache-control

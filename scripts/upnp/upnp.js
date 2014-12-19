@@ -91,7 +91,7 @@ UPNP.prototype.processDevice = function (deviceDoc, location) {
 	var xmlDeviceType = deviceDoc.querySelector('deviceType').textContent;
 	var xmlName = deviceDoc.querySelector('friendlyName').textContent;
 	var xmlUDN = deviceDoc.querySelector('UDN').textContent;
-	var xmlPresentationUrl = deviceDoc.querySelector('presentationURL').textContent;
+	var xmlPresentationUrl = (deviceDoc.querySelector('presentationURL') || {textContent:''}).textContent;
 	var xmlIcons = deviceDoc.querySelectorAll('iconList icon');
 	var xmlServices = deviceDoc.querySelectorAll('serviceList service');
 
