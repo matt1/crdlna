@@ -37,15 +37,16 @@ var SSDP = function(config) {
 /**
  *  Initialise the SSDP connection by opening a UDP socket and joining the multicast group.
  */
-SSDP.prototype.init = function() {
+SSDP.prototype.init = function(callback) {
   this.log("Initialising...");
 
   var that = this;
+  var cb = callback || function(){}
+
   chrome.sockets.udp.create({}, function (socket) {
     var socketId = socket.socketId;
     chrome.sockets.udp.onReceive.addListener(function(result) {
         var data = that.bufferToString(result.data);
-        console.log(result, data);
         that.processNotify(data);
     })
     // House keeping on TTL & loopback
@@ -60,24 +61,30 @@ SSDP.prototype.init = function() {
       }
     });
 
-
-    // use port 0 to pick a free port
-    // this solves Address In Use (-147) error when there are other SSDP servers on the same machine
-    chrome.sockets.udp.bind(socketId, that.address, 0, function (result) {
-      if (result !== 0) {
-        that.log('Unable to bind to new socket: ' + result);
-      } else {
-        chrome.sockets.udp.joinGroup(socketId, that.multicast, function (result) {
-          if (result !== 0) {
-            that.log('Unable to join multicast group ' + that.multicast + ': ' + result);
-          } else {
-            that.socketId = socketId;            
-            that.sendDiscover();
-            that.log("Waiting for SSDP broadcasts.");
-          }
-        });
+    function bind(port, cb) {
+      chrome.sockets.udp.bind(socketId, that.address, port, function (result) {
+        if(result === 0) return cb(result)
+        that.log('Unable to bind to new socket: ' + result + ", trying to bind to random port");
+        chrome.sockets.udp.bind(socketId, that.address, 0, cb)
+      })
+    }
+    bind(that.port, function(result) {
+      if(result !== 0) {
+          that.log('Unable to bind to new socket: ' + result)
+          return cb(result)
       }
-    });
+      chrome.sockets.udp.joinGroup(socketId, that.multicast, function (result) {
+        if (result !== 0) {
+          that.log('Unable to join multicast group ' + that.multicast + ': ' + result);
+        } else {
+          that.socketId = socketId;
+          that.sendDiscover();
+          that.log("Waiting for SSDP broadcasts.");
+        }
+        cb(result);
+      });
+    })
+
   });
 };
 
@@ -90,12 +97,13 @@ SSDP.prototype.sendDiscover = function(config) {
   var that = this;
   var c = config || {};
   var respondDelay = c.delay || 3;
+  var target = c.target || 'ssdp:all'
 
   var search = 'M-SEARCH * HTTP/1.1\r\n' +
     'HOST: 239.255.255.250:1900\r\n' +
-    'MAN: ssdp:discover\r\n' +
+    'MAN: "ssdp:discover"\r\n' +
     'MX: ' + respondDelay + '\r\n' +
-    'ST: ssdp:all\r\n\r\n';
+    'ST: ' + target + '\r\n\r\n'
 
   var buffer = this.stringToBuffer(search);
   chrome.sockets.udp.send(this.socketId, buffer, that.multicast,
@@ -242,18 +250,11 @@ SSDP.prototype.updateCache = function() {
 
 /**
  * Converts a string to an array buffer
- * @param {string} str String to e converted
+ * @param {string} str String to be converted
  * @private 
  */
 SSDP.prototype.stringToBuffer = function(str) {
-  // courtesy of Renato Mangini / HTML5Rocks
-  // http://updates.html5rocks.com/2012/06/How-to-convert-ArrayBuffer-to-and-from-String
-  var buf = new ArrayBuffer(str.length*2); // 2 bytes for each char
-  var bufView = new Uint8Array(buf);
-  for (var i=0, strLen=str.length; i<strLen; i++) {
-    bufView[i] = str.charCodeAt(i);
-  }
-  return buf;
+  return new TextEncoder().encode(str).buffer;
 };
 
 /**
@@ -262,9 +263,7 @@ SSDP.prototype.stringToBuffer = function(str) {
  * @private
  */
 SSDP.prototype.bufferToString = function(buffer) {
-  // courtesy of Renato Mangini / HTML5Rocks
-  // http://updates.html5rocks.com/2012/06/How-to-convert-ArrayBuffer-to-and-from-String
-  return String.fromCharCode.apply(null, new Uint8Array(buffer));
+  return new TextDecoder().decode(new DataView(buffer))
 };
 
 /**
