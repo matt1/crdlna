@@ -121,11 +121,6 @@ SSDP.prototype.sendDiscover = function(config) {
 SSDP.prototype.processNotify = function(str) {
   var notify = {};
 
-  if (0 && str.indexOf('NOTIFY') < 0) {
-    // only interested in notify broadcasts
-    // check temporary disabled - I have packets without NOTIFY prefix (very strange)
-    return;
-  }
   str.replace(/([A-Z\-]*){1}:([^\n]*){1}/gi, 
     function (match, m1, m2) {
       var name = m1.toLowerCase().trim();
