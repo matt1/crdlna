@@ -41,14 +41,14 @@ SSDP.prototype.init = function(callback) {
   this.log("Initialising...");
 
   var that = this;
-  var cb = callback || function(){}
+  var cb = callback || function(){};
 
   chrome.sockets.udp.create({}, function (socket) {
     var socketId = socket.socketId;
     chrome.sockets.udp.onReceive.addListener(function(result) {
         var data = that.bufferToString(result.data);
         that.processNotify(data);
-    })
+    });
     // House keeping on TTL & loopback
     chrome.sockets.udp.setMulticastTimeToLive(socketId, 12, function (result) {
       if (result !== 0) {
@@ -63,15 +63,15 @@ SSDP.prototype.init = function(callback) {
 
     function bind(port, cb) {
       chrome.sockets.udp.bind(socketId, that.address, port, function (result) {
-        if(result === 0) return cb(result)
+        if(result === 0) return cb(result);
         that.log('Unable to bind to new socket: ' + result + ", trying to bind to random port");
-        chrome.sockets.udp.bind(socketId, that.address, 0, cb)
-      })
+        chrome.sockets.udp.bind(socketId, that.address, 0, cb);
+      });
     }
     bind(that.port, function(result) {
       if(result !== 0) {
-          that.log('Unable to bind to new socket: ' + result)
-          return cb(result)
+          that.log('Unable to bind to new socket: ' + result);
+          return cb(result);
       }
       chrome.sockets.udp.joinGroup(socketId, that.multicast, function (result) {
         if (result !== 0) {
@@ -83,7 +83,7 @@ SSDP.prototype.init = function(callback) {
         }
         cb(result);
       });
-    })
+    });
 
   });
 };
@@ -97,13 +97,13 @@ SSDP.prototype.sendDiscover = function(config) {
   var that = this;
   var c = config || {};
   var respondDelay = c.delay || 3;
-  var target = c.target || 'ssdp:all'
+  var target = c.target || 'ssdp:all';
 
   var search = 'M-SEARCH * HTTP/1.1\r\n' +
     'HOST: 239.255.255.250:1900\r\n' +
     'MAN: "ssdp:discover"\r\n' +
     'MX: ' + respondDelay + '\r\n' +
-    'ST: ' + target + '\r\n\r\n'
+    'ST: ' + target + '\r\n\r\n';
 
   var buffer = this.stringToBuffer(search);
   chrome.sockets.udp.send(this.socketId, buffer, that.multicast,
@@ -121,16 +121,15 @@ SSDP.prototype.sendDiscover = function(config) {
 SSDP.prototype.processNotify = function(str) {
   var notify = {};
 
-  str.replace(/([A-Z\-]*){1}:([^\n]*){1}/gi, 
-    function (match, m1, m2) {
+  str.replace(/([A-Z\-]*){1}:([^\n]*){1}/gi, function (match, m1, m2) {
       var name = m1.toLowerCase().trim();
       name = name.replace('-',''); // remove any hypens, e.g. cache-control
       notify[name] = m2.trim();
-    });
-  if(!notify.usn)
-    return;
+  });
 
-  console.log('notify packet', notify)
+  if(!notify.usn) {
+    return;
+  }
 
   // Check for expiration/max-age
   if (notify.cachecontrol) {

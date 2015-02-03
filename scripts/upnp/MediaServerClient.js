@@ -102,7 +102,7 @@ MediaServerClient.prototype.browseFolder = function(folderId, callback) {
             'upnp:genre,upnp:author,upnp:actor,upnp:director,upnp:producer,upnp:publisher,' +
             'container@childCount,@childCount</Filter>' + 
             '<StartingIndex>0</StartingIndex>' + 
-            '<RequestedCount>30</RequestedCount>' + 
+            '<RequestedCount>0</RequestedCount>' + 
             '<SortCriteria/>' + 
         '</u:Browse>' +
     '</s:Body>'+

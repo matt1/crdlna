@@ -1,0 +1,55 @@
+html {
+	overflow-y			: scroll;
+}
+
+body {
+	display  				: flex;
+	margin 					: 0;
+	padding 				: 0;
+}
+/* Contains the list of devices we know about */
+#deviceList {
+	border-right  	: 1px solid silver;
+  width						: 175px;
+  overflow 				: auto;
+  position 				: absolute;
+  left 						: 0;
+  top 						: 0;
+}
+
+/* contains the content and playback section */
+#rightStack {
+	display 				: flex;
+	flex-direction 	: column;
+	position 				: absolute;
+	left 						: 176px;
+	top 						: 0px;
+}
+
+/* Container for individual content items (think folder listing ) */
+div.contentItems {
+	background-color: #eee;
+	display					: flex;
+	flex-direction	: row;
+	flex-wrap				: wrap;
+	width 					: 100%;
+}
+
+/* Individual folder item */
+div.contentItem {
+	background-color: white;
+	border 					: 1px solid silver;
+	border-radius 	: 3px;
+	box-shadow 			: 0 0 0.6em #ccc;
+	width 					: 64px;
+	height 					: 64px;
+	margin 					: 8px;
+	padding 				: 4px;
+	cursor 					: pointer;
+}
+
+/* Individual folder item */
+div.contentItem:hover {
+	box-shadow 			: 0 0 0.6em blue;
+}
+

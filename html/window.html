@@ -2,14 +2,30 @@
 <html>
   <head>
   	<title>Chrome DLNA Renderer</title>
-
+    <meta name="viewport" content="initial-scale=1">
+    <link rel="stylesheet" href="css/crdlna.css" />
 		<script src="../scripts/ssdp/ssdp.js"></script>
   	<script src="../scripts/upnp/upnp.js"></script>
   	<script src="../scripts/upnp/MediaServerClient.js"></script>
   	<script src="../scripts/window/main.js"></script>
   </head>
   <body>
-  	Devices <a href="#" id="refreshDevices">Refresh</a>
-    <div id="devices"></div>
+ 
+      <div id="deviceList">
+        <a href="#" id="refreshDevices">Refresh</a>
+        <div id="devices"></div>
+      </div>
+
+      <div id="rightStack">
+        <div id="content" class="contentItems">
+          
+        </div>
+        <div id="playback">
+          
+        </div>
+      </div>
+
+
+
   </body>
 </html>

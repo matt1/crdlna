@@ -36,7 +36,7 @@ CrDlna.prototype.updateDeviceList = function () {
 			}
 			var container = document.createElement('div');			
 			var device = document.createElement('div');
-			var listing = document.createElement('div');
+			var listing = document.querySelector('#content')
 			device.innerText = v.name;
 			device.setAttribute('objectId', '0');
 
@@ -65,36 +65,52 @@ CrDlna.prototype.updateDeviceList = function () {
 				device.innerText += ' (not a media server)';
 			}
 			container.appendChild(device);
-			container.appendChild(listing);
 			list.appendChild(container);
 		});
 
 };
 
 /**
- * Draws any child folders
+ * Draws any child items
  *
  * @param {Object} elem The element into which to add the child items
  * @param {Object} data The object contianing the child folder data 
  */
 CrDlna.prototype.drawChildFolders = function (device, elem, data) {
-	if (!data) return;
+	if (!data || !elem) return;
 
 	var that = this;
-	var list = document.createElement('ul');
+	elem.innerHTML = '';
+
+	var playback = document.querySelector('#playback');
 
 	data.forEach(function (v, i, a){
-		var child = document.createElement('li');		
+		var child = document.createElement('div');		
+		child.classList.add('contentItem');
 		child.setAttribute('objectId', v.id);
 		child.setAttribute('type', v.type);
-		if (v.type.indexOf('object.item') >= 0) {
-			// Item
-			child.innerHTML = '<p>' + v.title + '</p><audio controls preload="none"><source src="' + v.url + '"></audio>';
+		if (v.type.indexOf('videoItem') >= 0) {
+			// Video Item
+			child.innerHTML = '<p>' + v.title + '</p><video width="300" height="240" controls preload="none"><source src="' + v.url + '"></video>';
+		
+		} else if (v.type.indexOf('imageItem') >= 0) {
+			// Image Item
+			child.innerHTML = '<p>' + v.title + '</p>';
+			child.addEventListener('click', function() {
+				playback.innerHTML = '<webview src="' + v.url + '" width="640" height="480" autosize="on"></webview>';
+			});
+
+		} else if (v.type.indexOf('object.item') >= 0) {
+			// Audio Item
+			child.innerHTML = '<p>' + v.title + '</p>';
+			child.addEventListener('click', function() {
+				playback.innerHTML = '<audio controls autoplay><source src="' + v.url + '"></audio>';
+			});
 		} else {
 			// Container
-
+			child.classList.add('contentFolder');
 			child.innerText = v.title;
-			child.addEventListener('click', function (){			
+			child.addEventListener('click', function () {			
 
 				var sendBrowseRequest = new Promise(function(resolve, reject) {				
 						var client = that.clients[device.name];
@@ -114,11 +130,9 @@ CrDlna.prototype.drawChildFolders = function (device, elem, data) {
 
 			});
 		}
-		list.appendChild(child);
+		elem.appendChild(child);
 	});
 
-	elem.innerHTML = '';
-	elem.appendChild(list);
 };
 
 /**
