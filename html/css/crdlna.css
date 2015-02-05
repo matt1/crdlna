@@ -11,47 +11,47 @@ body {
 	padding 				: 0;
 }
 
-.main {
+div.main {
+	align-content		: stretch; 
+	align-items			: stretch;
+	display					: flex;
+	flex-direction	: row;
+	justify-content	: flex-start;
 	height 					: 100%;
 	width 					: 100%;
+}
 
-		    display: flex;
-		    flex-direction: row;
-		    
-		    justify-content: flex-start; /* align items in Main Axis */
-		    align-items: stretch; /* align items in Cross Axis */
-		    align-content: stretch; /* Extra space in Cross Axis */
-	}
+/** Device listing */
+div.devices {
+	border-right 		: 1px solid #ccc;
+	width 					: 180px;
+}
 
-	/** Device listing */
-	div.devices {
-		border-right 	: 1px solid #ccc;
-		width 				: 180px;
-	}
+/** The right/main pane that contains a a header, main content area and footer */
+div.rightStack {
+	align-items			: stretch; 
+	align-content		: stretch; 
+	display 				: flex;
+	flex-direction	: column;		
+	justify-content	: flex-start;
+	overflow 				: hidden;
+	height 					: 100%;
+	width 					: 100%;
+}
 
-	/** The right/main pane that contains a a header, main content area and footer */
-	div.rightStack {
-		align-items		: stretch; 
-		align-content	: stretch; 
-		display 			: flex;
-		flex-direction: column;		
-		justify-content: flex-start;
-		overflow 			: hidden;
-		height 				: 100%;
-		width 				: 100%;
-
-
-	}
+/** Expands the "content" are whilst allowing the actual items to wrap and grow normally */
+div.contentItemsContainer {
+	background-color: #eee;
+	flex 						: 1;		
+	overflow-x			: hidden;
+	overflow-y 			: auto;
+}
 
 /* Container for individual content items (think folder listing ) */
 div.contentItems {
-	background-color: #eee;
 	display					: flex;
-	flex						: 1;
 	flex-direction	: row;
 	flex-wrap				: wrap;
-	overflow-x			: hidden;
-	overflow-y 			: scroll;
 	width 					: 100%;
 }
 
