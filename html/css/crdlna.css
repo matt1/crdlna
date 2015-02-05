@@ -1,37 +1,57 @@
 html {
-	overflow-y			: scroll;
+	height 					: 100%;
+	width 					: 100%;
 }
 
 body {
-	display  				: flex;
+
+	height 					: 100%;
+	width 					: 100%;
 	margin 					: 0;
 	padding 				: 0;
 }
-/* Contains the list of devices we know about */
-#deviceList {
-	border-right  	: 1px solid silver;
-  width						: 175px;
-  overflow 				: auto;
-  position 				: absolute;
-  left 						: 0;
-  top 						: 0;
-}
 
-/* contains the content and playback section */
-#rightStack {
-	display 				: flex;
-	flex-direction 	: column;
-	position 				: absolute;
-	left 						: 176px;
-	top 						: 0px;
-}
+.main {
+	height 					: 100%;
+	width 					: 100%;
+
+		    display: flex;
+		    flex-direction: row;
+		    
+		    justify-content: flex-start; /* align items in Main Axis */
+		    align-items: stretch; /* align items in Cross Axis */
+		    align-content: stretch; /* Extra space in Cross Axis */
+	}
+
+	/** Device listing */
+	div.devices {
+		border-right 	: 1px solid #ccc;
+		width 				: 180px;
+	}
+
+	/** The right/main pane that contains a a header, main content area and footer */
+	div.rightStack {
+		align-items		: stretch; 
+		align-content	: stretch; 
+		display 			: flex;
+		flex-direction: column;		
+		justify-content: flex-start;
+		overflow 			: hidden;
+		height 				: 100%;
+		width 				: 100%;
+
+
+	}
 
 /* Container for individual content items (think folder listing ) */
 div.contentItems {
 	background-color: #eee;
 	display					: flex;
+	flex						: 1;
 	flex-direction	: row;
 	flex-wrap				: wrap;
+	overflow-x			: hidden;
+	overflow-y 			: scroll;
 	width 					: 100%;
 }
 
