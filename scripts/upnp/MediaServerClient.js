@@ -146,12 +146,18 @@ MediaServerClient.prototype.parseDidl = function (didlDoc) {
   var containers = didlDoc.querySelectorAll('container');  
   var files = didlDoc.querySelectorAll('item');
 
+  // Parse containers
   [].forEach.call(containers, (function (container, i, a){
     var title = container.querySelector('title').textContent;
     var type = container.querySelector('class').textContent;
     var id = container.getAttribute('id');
     var parentId = container.getAttribute('parentID');
     var childCount = container.getAttribute('childCount');
+    
+    // Potentially empty music related bits
+    var albumArt = container.querySelector('albumArtURI');
+    var genre = container.querySelector('genre');
+    var artist = container.querySelector('artist');
 
     if (type && type.indexOf('object.container') >= 0) {
       items.push({
@@ -159,12 +165,15 @@ MediaServerClient.prototype.parseDidl = function (didlDoc) {
         id: id,
         parentId: parentId,
         childCount: childCount,
-        type: type
+        type: type,
+        albumArt:  (albumArt ? albumArt.textContent : ''),
+        genre: (genre ? genre.textContent : ''),
+        artist: (artist ? artist.textContent : '')
       });
     }
   }));
 
-
+  // Parse files
   [].forEach.call(files, (function (item, i, a){
     var title = item.querySelector('title').textContent;
     var type = item.querySelector('class').textContent;

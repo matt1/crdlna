@@ -27,6 +27,11 @@ div.devices {
 	width 					: 180px;
 }
 
+/** Header/path listing */
+#header div {
+	display 				: inline-block;
+}
+
 /** The right/main pane that contains a a header, main content area and footer */
 div.rightStack {
 	align-items			: stretch; 
@@ -61,8 +66,8 @@ div.contentItem {
 	border 					: 1px solid silver;
 	border-radius 	: 3px;
 	box-shadow 			: 0 0 0.6em #ccc;
-	width 					: 64px;
-	height 					: 64px;
+	width 					: 96px;
+	height 					: 96px;
 	margin 					: 8px;
 	padding 				: 4px;
 	cursor 					: pointer;
