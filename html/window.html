@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html ng-app="crdlnaApp" ng-csp>
   <head>
   	<title>Chrome DLNA Renderer</title>
     <meta name="viewport" content="initial-scale=1">
@@ -7,13 +7,20 @@
 		<script src="../scripts/ssdp/ssdp.js"></script>
   	<script src="../scripts/upnp/upnp.js"></script>
   	<script src="../scripts/upnp/MediaServerClient.js"></script>
-  	<script src="../scripts/window/main.js"></script>
+    <script src="../scripts/angular.min.js"></script>
+    <script src="../scripts/window/controller.js"></script>
   </head>
-  <body>
+  <body ng-controller="crdlnaController">
     <div class="main">
       <div class="devices">
         <a href="#" id="refreshDevices">Refresh</a>
-        <div id="devices"></div>
+        <div id="devices">
+          
+          <div ng-repeat="device in devices" ng-click="deviceClick(device)">
+            {{device.name}}
+          </div>
+
+        </div>
       </div>
 
       <div class="rightStack">
@@ -22,13 +29,24 @@
           </div>
           <div class="contentItemsContainer">
             <div id="content" class="contentItems">
-                
+                <div  ng-repeat="item in currentContainer.children" 
+                      ng-click="itemClick(item)" 
+                      ng-style="{'background-image': 'url({{item.albumArt}})', 'background-style': 'cover'}"
+                      class="contentItem">
+                  {{item.title}}
+                </div>
               
             </div>
           </div>
           
           <div id="playback">
-              
+            <audio ng-if="currentItem.type == 'object.item.audioItem.musicTrack'" controls autoplay>
+              <source ng-src="{{$parent.currentItem.url}}">
+            </audio>
+            <webview ng-if="currentItem.type == 'object.item.imageItem.photo'" ng-src="{{$parent.currentItem.url}}" width="640" height="480" autosize="on"></webview>
+            <video ng-if="currentItem.type == 'object.item.videoItem.movie'" width="300" height="240" controls preload="none">
+              <source ng-src="{{$parent.currentItem.url}}">
+            </video>
           </div>
       </div>
     </div>
