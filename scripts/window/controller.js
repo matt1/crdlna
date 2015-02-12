@@ -56,7 +56,12 @@ crdlnaApp.controller('crdlnaController', function ($scope, $sce) {
 							};
 							xhr.send();
 						} else {
-							childItem.albumArtBlob = 'images/folder.svg';
+							// check if this is an music track or not (this feels like it is not the 'angular way'?)
+							if (childItem.type == 'object.item.audioItem.musicTrack') {
+								childItem.albumArtBlob = 'images/note.svg';
+							} else {
+								childItem.albumArtBlob = 'images/folder.svg';
+							}
 						}
 					});
 
