@@ -31,7 +31,7 @@
             <div id="content" class="contentItems">
                 <div  ng-repeat="item in currentContainer.children" 
                       ng-click="itemClick(item)" 
-                      ng-style="{'background-image': 'url({{item.albumArt}})', 'background-style': 'cover'}"
+                      ng-style="{'background-image': 'url(' + item.albumArtBlob + ')', 'background-size': 'cover'}"
                       class="contentItem">
                   {{item.title}}
                 </div>

@@ -51,10 +51,12 @@ crdlnaApp.controller('crdlnaController', function ($scope, $sce) {
 							xhr.responseType = 'blob';
 							xhr.onload = function(e) {
 								$scope.$apply(function(){
-							  	childItem.albumArt = window.URL.createObjectURL(xhr.response);
+							  	childItem.albumArtBlob = window.URL.createObjectURL(xhr.response);
 								});
 							};
 							xhr.send();
+						} else {
+							childItem.albumArtBlob = 'images/folder.svg';
 						}
 					});
 
